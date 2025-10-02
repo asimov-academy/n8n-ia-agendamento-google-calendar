@@ -1,0 +1,495 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "96bf895f-a18c-4a4c-bc26-3ec5d2372de5",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        864,
+        880
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "openAiApi": {
+          "id": "fDHpWtx6df0IvG5U",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.phone }}",
+        "contextWindowLength": 10
+      },
+      "id": "270176df-9c2d-4f1a-b017-9349cb249341",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        1088,
+        880
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use esta ferramenta quando você for solicitado a recuperar dados de eventos.",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "samuel@asimov.academy",
+          "mode": "list",
+          "cachedResultName": "samuel@asimov.academy"
+        },
+        "limit": 100,
+        "options": {
+          "timeMin": "={{ $fromAI('start_date') }}",
+          "timeMax": "={{ $fromAI('end_date') }}"
+        }
+      },
+      "id": "5cdece35-bd69-4c77-b240-963df8781d64",
+      "name": "Google Calendar - Get Events",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "position": [
+        1280,
+        864
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "ASJqWiczhqyuVqCX",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Criar um evento no Google Agenda",
+        "calendar": {
+          "__rl": true,
+          "value": "samuel@asimov.academy",
+          "mode": "list",
+          "cachedResultName": "samuel@asimov.academy"
+        },
+        "start": "={{ $fromAI('start_date').replace(' ', 'T') + '-03:00' }}",
+        "end": "={{ $fromAI('end_date').replace(' ', 'T') + '-03:00' }}",
+        "useDefaultReminders": false,
+        "additionalFields": {
+          "attendees": [
+            "={{ $fromAI('email_client') }} "
+          ],
+          "description": "={{ $fromAI('event_description') }} ",
+          "summary": "={{ $fromAI('event_title') }} "
+        }
+      },
+      "id": "634e6472-099c-4f0e-b9eb-67956c4881b8",
+      "name": "Google Calendar - Create events",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "position": [
+        1472,
+        864
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "ASJqWiczhqyuVqCX",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "=Você é um **assistente virtual de uma barbearia**.\nSeu objetivo principal é ajudar clientes a **agendar horários**, **consultar disponibilidade** e **informar valores** de forma clara e educada.\n\n### Horário de funcionamento\n\n* Manhã: **10h00 às 13h00**\n* Tarde/Noite: **15h00 às 20h00**\n\n### Serviços oferecidos\n\n* **Cabelo** → duração média **40 minutos** → valor **R$ 50,00**\n* **Barba** → duração média **30 minutos** → valor **R$ 35,00**\n* **Cabelo + Barba** → duração somada (**70 minutos**) → valor **R$ 80,00**\n\n### Regras de agendamento\n\n1. Sempre verificar a duração do(s) serviço(s) solicitado(s).\n2. Se o cliente pedir apenas **1 serviço**, o sistema deve checar janelas de **40 min (cabelo)** ou **30 min (barba)**.\n3. Se o cliente pedir **2 serviços (cabelo + barba)**, checar janelas de **70 minutos**.\n4. Quando o cliente perguntar por disponibilidade (ex.: “tem horário de manhã?”), a resposta deve considerar:\n\n   * Se houver apenas uma janela de **30 ou 40 min**, responder que há vaga **para apenas 1 serviço (cabelo OU barba)**.\n   * Se houver janela de **70 min**, responder que há vaga para **cabelo e barba juntos**.\n5. Caso não exista horário disponível no período pedido, ofereça o próximo horário possível dentro do expediente.\n6. Sempre informar os valores dos serviços junto com a disponibilidade.\n7. Você precisa pegar o nome completo e Email do cliente para anexar isso no agendamento\n\n### Estilo de comunicação\n\n* Use linguagem **natural, simpática e profissional**, como um atendente de barbearia falando diretamente com o cliente.\n* Seja **direto e objetivo**, mas sempre **cordial**.\n* Não use termos técnicos (ex.: não fale em “slots” ou “duração média de serviço”), apenas traduza em linguagem simples.\n* Exemplos:\n\n  * “Tenho um horário amanhã às 10h só para cabelo (R$ 50) ou barba (R$ 35). Para fazer os dois juntos só consigo às 15h, por R$ 80.”\n  * “Na parte da manhã já estamos cheios, mas consigo encaixar você às 16h para cabelo e barba (R$ 80).”\n\n### Comportamentos-chave\n\n* **Clareza**: explique de forma simples a disponibilidade.\n* **Validação**: confirme sempre qual serviço o cliente deseja (cabelo, barba ou os dois).\n* **Adaptação**: entenda pedidos vagos (“tem horário de manhã?”) e detalhe o que está disponível.\n* **Proatividade**: se não houver vaga no período pedido, ofereça alternativas no mesmo dia.\n* **Language Matching**: todas as interações devem ser em português, no tom adequado a um atendimento humano de barbearia.\n\nSempre baseie suas respostas na data atual:\n{{ DateTime.local().toFormat('cccc d LLLL yyyy HH:mm') }}\n"
+        }
+      },
+      "id": "9b259245-5fd5-4798-973e-bc6aa15da20f",
+      "name": "Calendar AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1088,
+        576
+      ],
+      "typeVersion": 1.7
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "calendarId": {
+          "__rl": true,
+          "value": "samuel@asimov.academy",
+          "mode": "list",
+          "cachedResultName": "samuel@asimov.academy"
+        },
+        "triggerOn": "eventStarted",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTrigger",
+      "typeVersion": 1,
+      "position": [
+        720,
+        1360
+      ],
+      "id": "bf6f6900-9411-4ac0-b75d-a071b3533165",
+      "name": "Google Calendar Trigger",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "ASJqWiczhqyuVqCX",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Crie uma nota de aviso sobre um evento de calendário.\n\nTítulo: {{ $json[\"summary\"] }}\n\nInformações importantes:\n- Data de início: {{ $json[\"start\"][\"dateTime\"] }}\n- Data de término: {{ $json[\"end\"][\"dateTime\"] }}\n- Organizador: {{ $json[\"organizer\"][\"email\"] }}\n- Participantes: {{ $json[\"attendees\"].map(att => att.email + \" (\" + att.responseStatus + \")\").join(\", \") }}\n- Link do evento: {{ $json[\"htmlLink\"] }}\n- Link da reunião: {{ $json[\"hangoutLink\"] }}\n\nDescrição:\n{{ $json[\"description\"] }}\n",
+        "options": {
+          "systemMessage": "Você é um assistente encarregado de redigir uma nota de aviso profissional sobre eventos de calendário.\n\n### Objetivo\nGerar um texto claro, natural e objetivo, apresentando os principais dados de um evento de agenda.\n\n### Instruções\n1. Estruture a nota como se fosse uma comunicação interna ou aviso formal.  \n2. Use linguagem simples, direta e profissional (sem emojis, sem informalidades).  \n3. Os campos do evento podem incluir:\n   - Título do evento\n   - Data e horário de início\n   - Data e horário de término\n   - Organizador\n   - Lista de participantes (com status de participação, se disponível)\n   - Link do evento no Google Calendar\n   - Link da reunião (Google Meet ou outro)\n   - Descrição do evento\n4. Caso algum desses dados não esteja presente, **apenas omita** essa informação — nunca invente nem insira placeholders.  \n5. A formatação deve ser em parágrafos curtos, de fácil leitura, evitando listas excessivamente técnicas.  \n6. Termine sempre com a descrição do evento (se existir).\n\n### Exemplo de saída esperada\n---\nEvento agendado: **Reunião de Marketing & Ensino**  \n\nData e horário: 8 de janeiro de 2024, das 10h00 às 11h00 (horário de Brasília).  \n\nOrganizador: lucas@asimov.academy  \nParticipantes confirmados: renata@asimov.academy, lorenzo@asimov.academy.  \nOutros convidados ainda não confirmaram presença.  \n\nLink para o evento: https://www.google.com/calendar/event?eid=123abc  \nLink para a reunião: https://meet.google.com/xyz-123  \n\nDescrição:  \nReunião para alinhamento de marketing e ensino.  \n---"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1136,
+        1360
+      ],
+      "id": "46eaf0ef-8624-4a9c-8437-84d097962bf3",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1136,
+        1584
+      ],
+      "id": "2a916233-2fe5-4f07-9cb8-dd50a496a587",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "fDHpWtx6df0IvG5U",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "n8n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        576,
+        688
+      ],
+      "id": "75429564-3b54-441a-b39c-ad539980960e",
+      "name": "Webhook",
+      "webhookId": "972f8702-48c5-407b-b700-be18276f2b0b"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "511dc849-1d3a-451d-9b82-6c47009c3543",
+              "name": "phone",
+              "value": "={{ $json.body.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "8bf6343a-2378-478f-bb7a-c4fc2b4f662c",
+              "name": "message",
+              "value": "={{ $json.body.text.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        864,
+        384
+      ],
+      "id": "d1a77405-a5f6-4f59-8b6c-15a0f0d8224e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/3E2DED7041CC00A797874A39F5505F78/token/BBAA86FE97983929EC5206B3/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "client-token",
+              "value": "Fd6fdaf30ca9841fa9c85cb4b6125acffS"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1696,
+        608
+      ],
+      "id": "dfbc92a4-91ef-4a60-b506-7d0f29675b0a",
+      "name": "send message to whatsapp user"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1408,
+        400
+      ],
+      "id": "17765e21-5f99-4e57-a5d3-24fc2cc274f7",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/3E2DED7041CC00A797874A39F5505F78/token/BBAA86FE97983929EC5206B3/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "client-token",
+              "value": "Fd6fdaf30ca9841fa9c85cb4b6125acffS"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "=5551936194224"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1648,
+        1360
+      ],
+      "id": "b16c7e8c-7739-4f8e-a9a1-a41c53178dc9",
+      "name": "send message to whatsapp user1"
+    },
+    {
+      "parameters": {
+        "content": "# Cria e Busca Eventos no Calendário",
+        "height": 800,
+        "width": 1424
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        512,
+        272
+      ],
+      "typeVersion": 1,
+      "id": "b07e4be5-2f95-4678-8057-e4f7ff430b6c",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# Notificação dos eventos",
+        "height": 560,
+        "width": 1424
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        512,
+        1200
+      ],
+      "typeVersion": 1,
+      "id": "ebb0ebf1-afc1-4cde-8b12-cbf0af6da70d",
+      "name": "Sticky Note1"
+    }
+  ],
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Calendar AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Calendar AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar - Get Events": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar - Create events": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Google Calendar Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "send message to whatsapp user1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Calendar AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "send message to whatsapp user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateId": "2703",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "26d55fdd7b646b765f880344346eb787894fd2f98b5573a1357af9be7c13c655"
+  }
+}
